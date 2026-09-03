@@ -1,0 +1,111 @@
+# LearnOS Mobile
+
+> **"Don't adapt the learner to the lesson. Adapt the lesson to the learner."**
+
+The LearnOS mobile app, built in Expo / React Native from the `LearnOS App.dc.html`
+prototype designed in Claude Design. Phone companion to the web app at
+[marcusmattus/LearnOS](https://github.com/marcusmattus/LearnOS), covering the same
+loop: scan material → extract concepts → build a learning path → learn, adapt and
+teach back.
+
+The design source (`LearnOS App.dc.html`, `ios-frame.jsx`, `support.js`) is not
+checked in here; it lives in the Claude Design project this was handed off from.
+
+## Running it
+
+```bash
+npm install
+npm start          # then press i / a, or scan the QR code with Expo Go
+```
+
+```bash
+npm run typecheck  # tsc --noEmit
+npm test           # renders all 19 screens and their state variants
+```
+
+`npx expo install` cannot reach `api.expo.dev` from some sandboxed
+environments; plain `npm install` works and resolves the same versions.
+
+Web is not a target. If you want to eyeball screens in a browser without a
+simulator, `npm i -D react-dom react-native-web @expo/metro-runtime` then
+`npx expo start --web` — react-native-web approximates shadows and percentage
+transforms, so treat it as a preview, not a reference.
+
+## The flow
+
+Nineteen screens, wired as one native stack. The tab bar appears on the six
+screens the design gives it one (Home, Scan, Map, Progress, Profile, Library);
+everything else is a pushed screen.
+
+```
+Home ─┬─ Scan ── Capture ── Review ─┐
+      └─ Upload / paste / topic ────┴─ Analysing ── Complete ── Concepts
+                                                                   │
+                              ProfileMatch ── Building ── Map ◄─────┘
+                                                           │
+      Lesson ─┬─ Another (switch teaching style) ── Lesson (visual)
+              └─ Practice ── Teachback ── Adapt ── Mastery ── Map (adapted)
+```
+
+Four screens carry the product's argument, and are worth reading first:
+
+- **Capture** — live scanner with the lock-on reticle and cycling status.
+- **Map** — the learning graph. Mastered, in-progress, scored and locked nodes
+  over SVG prerequisite roads, with a pinned *Next up* card and a concept sheet.
+- **Another** — LearnOS switching teaching style mid-concept, and showing the
+  signal that made it switch.
+- **Adapt** — the path rewriting itself, before/after, then the map redrawing
+  with the teal support route.
+
+## Layout
+
+```
+App.tsx                  fonts, providers, the stack navigator
+src/theme.ts             colours, font families, gradient angle helper
+src/state/AppState.tsx   session state shared across the flow
+src/data/content.ts      the Sapiens content the flow is demonstrated with
+src/hooks/useRamp.ts     the 0→100 progress that auto-advances two screens
+src/components/          primitives (see below)
+src/screens/             one file per screen
+```
+
+### Components worth knowing
+
+| Component | Why it exists |
+| --- | --- |
+| `anim.tsx` | The prototype's CSS keyframes as Animated: `FadeInUp`, `Pulse`, `Spin`, `Float`, `GlowRing`, `ScanLine`, `useDashOffset`. |
+| `ui.tsx` | `Stripes` (SVG stand-in for `repeating-linear-gradient`), `RadialGlow`, `Ring`, `Bar`, buttons, chips, step rows. |
+| `MapNodes.tsx` | The map's node vocabulary, each centred on its coordinate. |
+| `ConceptSheet.tsx` | The bottom sheet, anchored above the tab bar. |
+| `Logo.tsx` | The LearnOS sprout mark, rebuilt as SVG from the brand board. |
+
+## Notes on the port
+
+**Design tokens.** Colours, type and spacing come straight from
+`LearnOS App.dc.html` and the brand board (`#0B0B12` ground, Poppins,
+`#7C5CFF` / `#3D8BFF` / `#00D4C8` / `#47D79E`). Only the four Poppins weights
+and two JetBrains Mono weights actually used are bundled — importing from the
+package root would pull in all eighteen cuts of each family.
+
+**Things CSS does that RN doesn't.** `repeating-linear-gradient` and
+`radial-gradient` become SVG patterns and gradients; `background-clip: text`
+becomes an SVG `<Text>` with a gradient fill; the `box-shadow` pulse in
+`@keyframes lo-glow` becomes a sibling view that scales and fades, since RN
+can't animate shadows. Unitless `line-height` is converted to absolute px.
+
+**The map** is authored on the design's 353 × 900 canvas and scaled to the
+device width, so node positions and SVG roads stay in register on any phone.
+
+**Placeholders are deliberate.** Book covers, camera feeds and scanned pages
+keep the striped placeholders the designer marked — drop real imagery in when
+you have it. The exception is the logo, which the prototype left as a dashed
+box and is now the real sprout mark.
+
+**Content.** `src/data/content.ts` is the seam for a real backend. Concept
+detail copy exists for the three map nodes that open the sheet; the design only
+wrote it for Agricultural Revolution, so the other two reuse the mastery figures
+and prerequisite edges the map itself states.
+
+**Not carried over.** The iPhone bezel, status bar and home indicator from
+`ios-frame.jsx`, and the numbered "Prototype flow" rail — both are canvas
+scaffolding, and the real app uses the device's own chrome and navigation.
