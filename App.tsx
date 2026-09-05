@@ -18,6 +18,10 @@ import { AppStateProvider } from './src/state/AppState';
 import { C } from './src/theme';
 import type { RootStackParamList } from './src/navigation/types';
 
+import { SplashScreen } from './src/screens/SplashScreen';
+import { WelcomeScreen } from './src/screens/WelcomeScreen';
+import { PaywallScreen } from './src/screens/PaywallScreen';
+import { LimitScreen } from './src/screens/LimitScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ScanScreen } from './src/screens/ScanScreen';
 import { CaptureScreen } from './src/screens/CaptureScreen';
@@ -79,13 +83,21 @@ export default function App() {
         <StatusBar style="light" />
         <NavigationContainer theme={navTheme}>
           <Stack.Navigator
-            initialRouteName="Home"
+            initialRouteName="Splash"
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: C.bg },
               animation: 'slide_from_right',
             }}
           >
+            <Stack.Screen name="Splash" component={SplashScreen} options={{ animation: 'fade' }} />
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Paywall" component={PaywallScreen} />
+            <Stack.Screen
+              name="Limit"
+              component={LimitScreen}
+              options={{ animation: 'slide_from_bottom', contentStyle: { backgroundColor: 'transparent' } }}
+            />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Scan" component={ScanScreen} />
             <Stack.Screen

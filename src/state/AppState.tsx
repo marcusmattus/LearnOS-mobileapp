@@ -8,10 +8,16 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 export type Approach = 'written' | 'visual';
+export type Plan = 'annual' | 'monthly';
+
+/** Free-tier scans before the paywall gate kicks in — matches the prototype's plan table. */
+export const FREE_SCAN_LIMIT = 5;
 
 type AppState = {
   /** Pages captured in the current scan session. */
   pages: number;
+  /** Real photo URIs captured by the camera or picked from the library this session, newest first. */
+  shots: string[];
   /** Whether the live-adaptation step has rewritten the learning path. */
   adapted: boolean;
   /** The learner's answer on the practice question, or null before answering. */
@@ -22,14 +28,23 @@ type AppState = {
   approach: Approach;
   /** Whether the concept detail sheet is open on the map. */
   sheetOpen: boolean;
+  /** Selected plan on the paywall. */
+  plan: Plan;
+  /** Free scans consumed so far — reaching FREE_SCAN_LIMIT routes Scan to the Limit gate. */
+  scansUsed: number;
 };
 
 type AppActions = {
-  capturePage: () => void;
+  /** Registers a captured page. Pass a real photo URI to also add it to `shots`. */
+  capturePage: (uri?: string) => void;
+  removeShot: (uri: string) => void;
   setAdapted: (v: boolean) => void;
   setPick: (v: string | null) => void;
   setTbDone: (v: boolean) => void;
   setApproach: (v: Approach) => void;
+  setPlan: (v: Plan) => void;
+  /** Consumes one free scan — called when a scan flow is handed off for analysis. */
+  useFreeScan: () => void;
   openSheet: () => void;
   closeSheet: () => void;
   /** Clears per-run answers so a fresh pass through the flow starts clean. */
@@ -38,11 +53,14 @@ type AppActions = {
 
 const INITIAL: AppState = {
   pages: 12,
+  shots: [],
   adapted: false,
   pick: null,
   tbDone: false,
   approach: 'written',
   sheetOpen: false,
+  plan: 'annual',
+  scansUsed: 0,
 };
 
 const Ctx = createContext<(AppState & AppActions) | null>(null);
@@ -66,11 +84,24 @@ export function AppStateProvider({
   // effects (closing the sheet on blur, for one), so they must not churn.
   const actions = useMemo<AppActions>(
     () => ({
-      capturePage: () => setState(prev => ({ ...prev, pages: prev.pages + 1 })),
+      capturePage: uri =>
+        setState(prev => ({
+          ...prev,
+          pages: prev.pages + 1,
+          shots: uri ? [uri, ...prev.shots] : prev.shots,
+        })),
+      removeShot: uri =>
+        setState(prev => ({
+          ...prev,
+          shots: prev.shots.filter(s => s !== uri),
+          pages: Math.max(0, prev.pages - 1),
+        })),
       setAdapted: v => patch({ adapted: v }),
       setPick: v => patch({ pick: v }),
       setTbDone: v => patch({ tbDone: v }),
       setApproach: v => patch({ approach: v }),
+      setPlan: v => patch({ plan: v }),
+      useFreeScan: () => setState(prev => ({ ...prev, scansUsed: prev.scansUsed + 1 })),
       openSheet: () => patch({ sheetOpen: true }),
       closeSheet: () => patch({ sheetOpen: false }),
       resetRun: () => patch({ pick: null, tbDone: false, approach: 'written', sheetOpen: false }),

@@ -11,6 +11,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppStateProvider } from '../src/state/AppState';
 import type { RootStackParamList } from '../src/navigation/types';
 
+import { SplashScreen } from '../src/screens/SplashScreen';
+import { WelcomeScreen } from '../src/screens/WelcomeScreen';
+import { PaywallScreen } from '../src/screens/PaywallScreen';
+import { LimitScreen } from '../src/screens/LimitScreen';
 import { HomeScreen } from '../src/screens/HomeScreen';
 import { ScanScreen } from '../src/screens/ScanScreen';
 import { CaptureScreen } from '../src/screens/CaptureScreen';
@@ -32,6 +36,10 @@ import { ProfileScreen } from '../src/screens/ProfileScreen';
 import { LibraryScreen } from '../src/screens/LibraryScreen';
 
 const SCREENS: [keyof RootStackParamList, React.ComponentType<any>][] = [
+  ['Splash', SplashScreen],
+  ['Welcome', WelcomeScreen],
+  ['Paywall', PaywallScreen],
+  ['Limit', LimitScreen],
   ['Home', HomeScreen],
   ['Scan', ScanScreen],
   ['Capture', CaptureScreen],

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenView } from '../components/ScreenView';
@@ -12,12 +12,27 @@ import type { RootStackParamList } from '../navigation/types';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const TOOLS = ['Rotate', 'Crop', 'Rescan'];
-const THUMBS = ['01', '02', '03', '04', '05'];
+const PLACEHOLDER_SLOTS = ['01', '02', '03', '04', '05'];
 
 export function ReviewScreen() {
   const nav = useNavigation<Nav>();
-  const { pages } = useAppState();
-  const [selected, setSelected] = useState('01');
+  const { pages, shots, removeShot, useFreeScan } = useAppState();
+  // Real captures come first; placeholder slots pad the strip out to five like the design.
+  const slots: { key: string; uri?: string }[] =
+    shots.length > 0
+      ? shots.map((uri, i) => ({ key: String(i + 1).padStart(2, '0'), uri }))
+      : PLACEHOLDER_SLOTS.map(key => ({ key }));
+  const [selected, setSelected] = useState(slots[0]?.key ?? '01');
+  const current = slots.find(s => s.key === selected) ?? slots[0];
+
+  const analyse = () => {
+    useFreeScan();
+    nav.navigate('Analysing');
+  };
+
+  const deleteSelected = () => {
+    if (current?.uri) removeShot(current.uri);
+  };
 
   return (
     <ScreenView contentStyle={styles.content}>
@@ -28,22 +43,29 @@ export function ReviewScreen() {
           <Text style={styles.ready}>{pages} pages ready</Text>
         </View>
 
-        {/* Captured page — the scan itself is a marked placeholder */}
-        <Stripes variant="paper" style={styles.preview}>
-          <View style={styles.previewHeaderBand} />
-          <Text style={styles.previewChapter}>CHAPTER 3 · The Cognitive Revolution</Text>
-          <View style={styles.correctedTag}>
-            <Text style={styles.correctedText}>perspective corrected</Text>
-          </View>
-        </Stripes>
+        {current?.uri ? (
+          <Image source={{ uri: current.uri }} style={styles.preview} resizeMode="cover" />
+        ) : (
+          <Stripes variant="paper" style={styles.preview}>
+            <View style={styles.previewHeaderBand} />
+            <Text style={styles.previewChapter}>CHAPTER 3 · The Cognitive Revolution</Text>
+            <View style={styles.correctedTag}>
+              <Text style={styles.correctedText}>perspective corrected</Text>
+            </View>
+          </Stripes>
+        )}
 
         <View style={styles.tools}>
           {TOOLS.map(t => (
-            <Pressable key={t} style={styles.tool}>
+            <Pressable
+              key={t}
+              style={styles.tool}
+              onPress={t === 'Rescan' ? () => nav.navigate('Capture') : undefined}
+            >
               <Text style={styles.toolText}>{t}</Text>
             </Pressable>
           ))}
-          <Pressable style={[styles.tool, styles.toolDanger]}>
+          <Pressable style={[styles.tool, styles.toolDanger]} onPress={deleteSelected}>
             <Text style={[styles.toolText, { color: C.red }]}>Delete</Text>
           </Pressable>
         </View>
@@ -53,15 +75,23 @@ export function ReviewScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.thumbRow}
         >
-          {THUMBS.map(n => {
-            const active = n === selected;
+          {slots.map(s => {
+            const active = s.key === selected;
             return (
-              <Pressable key={n} style={styles.thumb} onPress={() => setSelected(n)}>
-                <Stripes
-                  variant={active ? 'paper' : 'paperSoft'}
-                  style={[styles.thumbImage, active ? styles.thumbActive : styles.thumbIdle]}
-                />
-                <Text style={[styles.thumbLabel, active && { color: C.purpleSoft }]}>{n}</Text>
+              <Pressable key={s.key} style={styles.thumb} onPress={() => setSelected(s.key)}>
+                {s.uri ? (
+                  <Image
+                    source={{ uri: s.uri }}
+                    style={[styles.thumbImage, active ? styles.thumbActive : styles.thumbIdle]}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Stripes
+                    variant={active ? 'paper' : 'paperSoft'}
+                    style={[styles.thumbImage, active ? styles.thumbActive : styles.thumbIdle]}
+                  />
+                )}
+                <Text style={[styles.thumbLabel, active && { color: C.purpleSoft }]}>{s.key}</Text>
               </Pressable>
             );
           })}
@@ -70,11 +100,7 @@ export function ReviewScreen() {
           </Pressable>
         </ScrollView>
 
-        <PrimaryButton
-          label="Analyse Book"
-          onPress={() => nav.navigate('Analysing')}
-          style={styles.cta}
-        />
+        <PrimaryButton label="Analyse Book" onPress={analyse} style={styles.cta} />
         <SecondaryButton
           label="Scan More Pages"
           onPress={() => nav.navigate('Capture')}
