@@ -21,11 +21,21 @@ const STRENGTHEN = ['Long-term consequences', 'Relationship with social hierarch
 /** The learner explains the concept back; LearnOS scores the explanation. */
 export function TeachbackScreen() {
   const nav = useNavigation<Nav>();
-  const { tbDone, setTbDone, setAdapted } = useAppState();
+  const { tbDone, setTbDone, setAdapted, analysis, activeConceptIndex } = useAppState();
 
-  const goAdapt = () => {
-    setAdapted(true);
-    nav.navigate('Adapt');
+  const live = !!analysis && analysis.concepts.length > 0 && activeConceptIndex < analysis.concepts.length;
+  const conceptName = live ? analysis!.concepts[activeConceptIndex].name : 'Agricultural Revolution';
+
+  // The demo's "path adaptation" beat is a fabricated re-routing narrative —
+  // real data has no such event to show, so live sessions go straight to
+  // Mastery instead of pretending the path just changed.
+  const goNext = () => {
+    if (live) {
+      nav.navigate('Mastery');
+    } else {
+      setAdapted(true);
+      nav.navigate('Adapt');
+    }
   };
 
   return (
@@ -38,9 +48,7 @@ export function TeachbackScreen() {
 
         {!tbDone ? (
           <>
-            <Text style={styles.prompt}>
-              Explain the Agricultural Revolution in your own words.
-            </Text>
+            <Text style={styles.prompt}>Explain {conceptName} in your own words.</Text>
             <Text style={styles.hint}>
               Rough and unpolished is fine — I'm listening for the causal chain.
             </Text>
@@ -116,8 +124,8 @@ export function TeachbackScreen() {
             </View>
 
             <PrimaryButton
-              label="Strengthen My Understanding"
-              onPress={goAdapt}
+              label={live ? 'Continue' : 'Strengthen My Understanding'}
+              onPress={goNext}
               style={styles.cta}
             />
           </FadeInUp>

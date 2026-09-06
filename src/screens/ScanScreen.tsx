@@ -57,10 +57,13 @@ export function ScanScreen() {
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
           allowsMultipleSelection: true,
-          quality: 0.6,
+          quality: 0.5,
+          base64: true,
         });
         if (result.canceled || result.assets.length === 0) return;
-        result.assets.forEach(a => capturePage(a.uri));
+        result.assets.forEach(a => {
+          if (a.base64) capturePage({ uri: a.uri, base64: a.base64 });
+        });
         useFreeScan();
         nav.navigate('Analysing');
       } finally {

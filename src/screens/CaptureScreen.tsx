@@ -46,8 +46,10 @@ export function CaptureScreen() {
     setBusy(true);
     setStage(2);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.6, skipProcessing: true });
-      if (photo?.uri) capturePage(photo.uri);
+      // No skipProcessing here — the scan API needs correctly oriented,
+      // reasonably sized JPEGs, not the fastest possible raw capture.
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: true });
+      if (photo?.uri && photo.base64) capturePage({ uri: photo.uri, base64: photo.base64 });
     } catch {
       // Camera hiccuped (backgrounded, etc.) — let the learner just try again.
     } finally {
@@ -125,7 +127,7 @@ export function CaptureScreen() {
             <Text style={styles.pageCount}>{pages} pages captured</Text>
             <View style={styles.shutterRow}>
               {shots[0] ? (
-                <Image source={{ uri: shots[0] }} style={styles.lastShot} resizeMode="cover" />
+                <Image source={{ uri: shots[0].uri }} style={styles.lastShot} resizeMode="cover" />
               ) : (
                 <Stripes variant="coverFine" style={styles.lastShot} />
               )}

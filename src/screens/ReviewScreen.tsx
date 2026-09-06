@@ -20,7 +20,7 @@ export function ReviewScreen() {
   // Real captures come first; placeholder slots pad the strip out to five like the design.
   const slots: { key: string; uri?: string }[] =
     shots.length > 0
-      ? shots.map((uri, i) => ({ key: String(i + 1).padStart(2, '0'), uri }))
+      ? shots.map((s, i) => ({ key: String(i + 1).padStart(2, '0'), uri: s.uri }))
       : PLACEHOLDER_SLOTS.map(key => ({ key }));
   const [selected, setSelected] = useState(slots[0]?.key ?? '01');
   const current = slots.find(s => s.key === selected) ?? slots[0];

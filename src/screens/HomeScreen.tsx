@@ -7,6 +7,7 @@ import { ScreenView } from '../components/ScreenView';
 import { FadeInUp } from '../components/anim';
 import { Ring, SectionLabel, Stripes } from '../components/ui';
 import { ScanIcon } from '../components/icons';
+import { useAppState } from '../state/AppState';
 import { angle, C, F, G, lh } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -20,6 +21,14 @@ const RECENT = [
 
 export function HomeScreen() {
   const nav = useNavigation<Nav>();
+  const { analysis, activeConceptIndex } = useAppState();
+
+  const live = !!analysis && analysis.concepts.length > 0;
+  const total = live ? analysis!.concepts.length : 33;
+  const mastered = live ? Math.min(activeConceptIndex, total) : 14;
+  const pct = total > 0 ? mastered / total : 0;
+  const nextConcept = live ? analysis!.concepts[Math.min(activeConceptIndex, total - 1)] : null;
+  const pathDone = live && activeConceptIndex >= total;
 
   return (
     <ScreenView nav>
@@ -54,32 +63,51 @@ export function HomeScreen() {
         <LinearGradient colors={[C.surfaceAlt, C.surface]} {...angle(150)} style={styles.pathCard}>
           <View style={styles.pathRow}>
             <View style={styles.flex}>
-              <Text style={styles.pathTitle}>Blockchain Basics</Text>
-              <Text style={styles.pathMeta}>14 of 33 concepts mastered</Text>
+              <Text style={styles.pathTitle}>{live ? analysis!.book.title : 'Blockchain Basics'}</Text>
+              <Text style={styles.pathMeta}>
+                {live ? `${mastered} of ${total} concepts mastered` : '14 of 33 concepts mastered'}
+              </Text>
             </View>
-            <Ring size={60} stroke={5} progress={0.42}>
-              <Text style={styles.ringLabel}>42%</Text>
+            <Ring size={60} stroke={5} progress={live ? pct : 0.42}>
+              <Text style={styles.ringLabel}>{Math.round((live ? pct : 0.42) * 100)}%</Text>
             </Ring>
           </View>
-          <Pressable style={styles.continueBtn} onPress={() => nav.navigate('Lesson')}>
-            <Text style={styles.continueText}>Continue</Text>
+          <Pressable
+            style={styles.continueBtn}
+            onPress={() => nav.navigate(live ? 'Map' : 'Lesson')}
+          >
+            <Text style={styles.continueText}>{pathDone ? 'Review Map' : 'Continue'}</Text>
           </Pressable>
         </LinearGradient>
 
         {/* Recommended */}
         <SectionLabel style={styles.label}>Recommended next</SectionLabel>
-        <Pressable style={styles.recCard} onPress={() => nav.navigate('Lesson')}>
+        <Pressable style={styles.recCard} onPress={() => nav.navigate(live && !pathDone ? 'Lesson' : live ? 'Map' : 'Lesson')}>
           <View style={styles.recIcon}>
             <Text style={styles.recIconText}>✦</Text>
           </View>
           <View style={styles.flex}>
-            <Text style={styles.recTitle}>Hashing</Text>
+            <Text style={styles.recTitle}>{live ? (pathDone ? 'All concepts mastered' : nextConcept!.name) : 'Hashing'}</Text>
             <View style={styles.recMetaRow}>
-              <Text style={styles.recMeta}>15 min</Text>
-              <Text style={styles.recDivider}>|</Text>
-              <Text style={styles.recMeta}>Interactive</Text>
-              <Text style={styles.recDivider}>|</Text>
-              <Text style={[styles.recMeta, { color: C.green }]}>58% mastery</Text>
+              {live ? (
+                pathDone ? (
+                  <Text style={styles.recMeta}>Explore your map</Text>
+                ) : (
+                  <>
+                    <Text style={styles.recMeta}>{nextConcept!.minutes} min</Text>
+                    <Text style={styles.recDivider}>|</Text>
+                    <Text style={styles.recMeta}>{nextConcept!.tag}</Text>
+                  </>
+                )
+              ) : (
+                <>
+                  <Text style={styles.recMeta}>15 min</Text>
+                  <Text style={styles.recDivider}>|</Text>
+                  <Text style={styles.recMeta}>Interactive</Text>
+                  <Text style={styles.recDivider}>|</Text>
+                  <Text style={[styles.recMeta, { color: C.green }]}>58% mastery</Text>
+                </>
+              )}
             </View>
           </View>
           <Text style={styles.chevron}>›</Text>

@@ -14,10 +14,21 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 /** The reward beat: a concept crosses into mastery and unlocks the next one. */
 export function MasteryScreen() {
   const nav = useNavigation<Nav>();
-  const { setAdapted } = useAppState();
+  const { setAdapted, analysis, activeConceptIndex, advanceConcept } = useAppState();
+
+  const live = !!analysis && analysis.concepts.length > 0 && activeConceptIndex < analysis.concepts.length;
+  const concept = live ? analysis!.concepts[activeConceptIndex] : null;
+  const total = live ? analysis!.concepts.length : 8;
+  const masteredCount = live ? activeConceptIndex + 1 : 7;
+  const bookPct = live ? Math.round((masteredCount / total) * 100) : 71;
+  const next = live ? analysis!.concepts[activeConceptIndex + 1] : null;
 
   const toMap = () => {
-    setAdapted(true);
+    if (live) {
+      advanceConcept();
+    } else {
+      setAdapted(true);
+    }
     nav.navigate('Map');
   };
 
@@ -26,15 +37,15 @@ export function MasteryScreen() {
       <FadeInUp style={styles.flex}>
         <View style={styles.head}>
           <Text style={styles.eyebrow}>CONCEPT MASTERED</Text>
-          <Text style={styles.title}>Agricultural Revolution</Text>
+          <Text style={styles.title}>{concept?.name ?? 'Agricultural Revolution'}</Text>
         </View>
 
         <View style={styles.ringArea}>
           <Pulse style={styles.haloWrap} duration={3200}>
             <RadialGlow color={C.green} opacity={0.2} style={styles.halo} />
           </Pulse>
-          <Ring size={150} stroke={9} progress={0.86} color={C.green} track={C.trackSoft}>
-            <Text style={styles.masteryValue}>86%</Text>
+          <Ring size={150} stroke={9} progress={live ? 1 : 0.86} color={C.green} track={C.trackSoft}>
+            <Text style={styles.masteryValue}>{live ? 100 : 86}%</Text>
             <Text style={styles.masteryLabel}>MASTERY</Text>
           </Ring>
         </View>
@@ -44,15 +55,19 @@ export function MasteryScreen() {
             <Text style={styles.unlockGlyph}>✓</Text>
           </View>
           <View style={styles.flex}>
-            <Text style={styles.unlockTitle}>Societies unlocked</Text>
-            <Text style={styles.unlockMeta}>Next destination on your map</Text>
+            <Text style={styles.unlockTitle}>
+              {live ? (next ? `${next.name} unlocked` : 'Every concept mastered') : 'Societies unlocked'}
+            </Text>
+            <Text style={styles.unlockMeta}>
+              {live && !next ? 'You’ve completed this learning path' : 'Next destination on your map'}
+            </Text>
           </View>
         </View>
 
         <View style={styles.stats}>
-          <StatTile value="7" label="Mastered" deep />
+          <StatTile value={live ? `${masteredCount}/${total}` : '7'} label="Mastered" deep />
           <StatTile value="13" label="Day streak" color={C.amber} deep />
-          <StatTile value="71%" label="Book mastery" color={C.purpleLight} deep />
+          <StatTile value={`${bookPct}%`} label="Book mastery" color={C.purpleLight} deep />
         </View>
 
         <View style={styles.footer}>

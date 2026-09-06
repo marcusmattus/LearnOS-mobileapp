@@ -26,7 +26,13 @@ const KEY_TERMS = ['Domestication', 'Surplus', 'Sedentism', 'Stratification'];
 /** The concept itself, taught in whichever way currently fits the learner. */
 export function LessonScreen() {
   const nav = useNavigation<Nav>();
-  const { approach } = useAppState();
+  const { approach, analysis, activeConceptIndex } = useAppState();
+
+  const live = !!analysis && analysis.concepts.length > 0 && activeConceptIndex < analysis.concepts.length;
+  const concept = live ? analysis!.concepts[activeConceptIndex] : null;
+  const total = live ? analysis!.concepts.length : 18;
+  const current = live ? activeConceptIndex + 1 : 4;
+  const pct = current / total;
 
   return (
     <ScreenView contentStyle={styles.content}>
@@ -34,18 +40,26 @@ export function LessonScreen() {
         <View style={styles.header}>
           <BackButton onPress={() => nav.navigate('Map')} />
           <View style={styles.flex}>
-            <Text style={styles.progressLabel}>Concept 4 / 18</Text>
-            <Bar progress={0.58} height={4} colors={[C.purple, C.blue]} style={styles.progressBar} />
+            <Text style={styles.progressLabel}>
+              Concept {current} / {total}
+            </Text>
+            <Bar progress={pct} height={4} colors={[C.purple, C.blue]} style={styles.progressBar} />
           </View>
-          <Text style={styles.progressPct}>58%</Text>
+          <Text style={styles.progressPct}>{Math.round(pct * 100)}%</Text>
         </View>
 
         <Text style={styles.approach}>
-          {approach === 'visual' ? 'VISUAL TIMELINE' : 'WRITTEN EXPLANATION'}
+          {live ? 'WRITTEN EXPLANATION' : approach === 'visual' ? 'VISUAL TIMELINE' : 'WRITTEN EXPLANATION'}
         </Text>
-        <Text style={styles.title}>Agricultural Revolution</Text>
+        <Text style={styles.title}>{concept?.name ?? 'Agricultural Revolution'}</Text>
 
-        {approach === 'visual' ? <VisualExplanation /> : <WrittenExplanation />}
+        {live ? (
+          <LiveExplanation explanation={concept!.explanation} keyTerms={concept!.keyTerms} />
+        ) : approach === 'visual' ? (
+          <VisualExplanation />
+        ) : (
+          <WrittenExplanation />
+        )}
 
         <View style={styles.actionRow}>
           <Pressable
@@ -116,6 +130,28 @@ function VisualExplanation() {
           could live off what others grew — and that is where lasting hierarchy begins.
         </Text>
       </View>
+    </>
+  );
+}
+
+function LiveExplanation({ explanation, keyTerms }: { explanation: string; keyTerms: string[] }) {
+  return (
+    <>
+      <View style={styles.proseCard}>
+        <Text style={styles.prose}>{explanation}</Text>
+      </View>
+      {keyTerms.length > 0 && (
+        <View style={styles.termsCard}>
+          <Text style={styles.cardLabelTight}>KEY TERMS</Text>
+          <View style={styles.terms}>
+            {keyTerms.map(t => (
+              <View key={t} style={styles.term}>
+                <Text style={styles.termText}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
     </>
   );
 }

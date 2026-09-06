@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenView } from '../components/ScreenView';
 import { FadeInUp, Float, Pulse, Spin } from '../components/anim';
-import { Bar, RadialGlow, StepRow, Stripes } from '../components/ui';
+import { Bar, PrimaryButton, RadialGlow, SecondaryButton, StepRow, Stripes } from '../components/ui';
 import { useRamp } from '../hooks/useRamp';
+import { useAppState } from '../state/AppState';
+import { analyzeScan, ScanApiError } from '../api/scanApi';
 import { ANALYSIS_STEPS, BOOK, stepStates } from '../data/content';
 import { angle, C, F, G } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
@@ -23,8 +25,58 @@ const PARTICLES = [
 
 export function AnalysingScreen() {
   const nav = useNavigation<Nav>();
-  const pct = useRamp(() => nav.replace('Complete'));
+  const { shots, analysisStatus, analysisError, startAnalysis, analysisSucceeded, analysisFailed, clearAnalysis } =
+    useAppState();
+  const hasRealScan = shots.length > 0;
+
+  // A real scan sends the captured pages to Claude and waits on that
+  // response; a simulated source (Upload PDF, Paste Text, ...) has nothing
+  // real to analyse, so the animated ramp alone drives it to Complete, which
+  // falls back to the demo book.
+  const pct = useRamp(hasRealScan ? undefined : () => nav.replace('Complete'));
   const steps = stepStates(ANALYSIS_STEPS, pct);
+  // Don't let the ramp visually finish before the real network call has.
+  const displayPct = hasRealScan ? Math.min(pct, 92) : pct;
+
+  const runAnalysis = useCallback(() => {
+    startAnalysis();
+    analyzeScan(shots.map(s => s.base64)).then(analysisSucceeded, err => {
+      analysisFailed(err instanceof ScanApiError || err instanceof Error ? err.message : 'Analysis failed');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shots]);
+
+  const fired = useRef(false);
+  useEffect(() => {
+    if (!hasRealScan || fired.current) return;
+    fired.current = true;
+    runAnalysis();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRealScan]);
+
+  useEffect(() => {
+    if (hasRealScan && analysisStatus === 'done') nav.replace('Complete');
+  }, [hasRealScan, analysisStatus, nav]);
+
+  const useDemoInstead = () => {
+    clearAnalysis();
+    nav.replace('Complete');
+  };
+
+  if (hasRealScan && analysisStatus === 'error') {
+    return (
+      <ScreenView>
+        <FadeInUp style={styles.errorScreen}>
+          <Text style={styles.title}>Couldn’t read that scan</Text>
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{analysisError}</Text>
+          </View>
+          <PrimaryButton label="Try Again" onPress={runAnalysis} style={styles.cta} />
+          <SecondaryButton label="Use Demo Content Instead" onPress={useDemoInstead} style={styles.ctaAlt} />
+        </FadeInUp>
+      </ScreenView>
+    );
+  }
 
   return (
     <ScreenView>
@@ -43,7 +95,7 @@ export function AnalysingScreen() {
           </Spin>
 
           <LinearGradient colors={['#2A2140', '#141426']} {...angle(150)} style={styles.core}>
-            <Text style={styles.corePct}>{pct}%</Text>
+            <Text style={styles.corePct}>{displayPct}%</Text>
           </LinearGradient>
 
           {PARTICLES.map((p, i) => (
@@ -68,7 +120,7 @@ export function AnalysingScreen() {
           ))}
         </View>
 
-        <Bar progress={pct / 100} height={4} colors={G.progress} style={styles.bar} />
+        <Bar progress={displayPct / 100} height={4} colors={G.progress} style={styles.bar} />
 
         <View style={styles.steps}>
           {steps.map(s => (
@@ -76,15 +128,25 @@ export function AnalysingScreen() {
           ))}
         </View>
 
-        {/* Source being analysed — cover is a marked placeholder */}
         <View style={styles.bookCard}>
           <Stripes variant="coverFine" style={styles.bookCover} />
           <View style={styles.flex}>
             <Text style={styles.bookEyebrow}>ANALYSING</Text>
-            <Text style={styles.bookTitle}>{BOOK.title}</Text>
-            <Text style={styles.bookMeta}>
-              {BOOK.author} · {BOOK.pages} pages
-            </Text>
+            {hasRealScan ? (
+              <>
+                <Text style={styles.bookTitle}>Your scan</Text>
+                <Text style={styles.bookMeta}>
+                  {shots.length} page{shots.length === 1 ? '' : 's'} · reading with Claude
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.bookTitle}>{BOOK.title}</Text>
+                <Text style={styles.bookMeta}>
+                  {BOOK.author} · {BOOK.pages} pages
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </FadeInUp>
@@ -165,4 +227,17 @@ const styles = StyleSheet.create({
   },
   bookTitle: { fontFamily: F.semibold, fontSize: 15, color: C.text, marginTop: 2 },
   bookMeta: { fontFamily: F.regular, fontSize: 11.5, color: C.muted },
+
+  errorScreen: { flex: 1, justifyContent: 'center' },
+  errorCard: {
+    marginTop: 18,
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.redA25,
+    borderRadius: 16,
+    padding: 16,
+  },
+  errorText: { fontFamily: F.regular, fontSize: 13.5, lineHeight: 21, color: C.body },
+  cta: { marginTop: 22 },
+  ctaAlt: { marginTop: 10 },
 });

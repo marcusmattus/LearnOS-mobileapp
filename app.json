@@ -56,7 +56,9 @@
     "extra": {
       "eas": {
         "projectId": "08dcdca5-47d5-400c-bc55-6ac5b90e8c48"
-      }
+      },
+      "scanApiUrl": "http://localhost:3000",
+      "scanApiKey": ""
     }
   }
 }
