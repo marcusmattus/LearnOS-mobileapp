@@ -61,17 +61,17 @@
       "scanApiUrl": "http://localhost:3000",
       "scanApiKey": "",
       "firebase": {
-        "apiKey": "YOUR_FIREBASE_WEB_API_KEY",
-        "authDomain": "YOUR_PROJECT_ID.firebaseapp.com",
-        "projectId": "YOUR_PROJECT_ID",
-        "storageBucket": "YOUR_PROJECT_ID.firebasestorage.app",
-        "messagingSenderId": "YOUR_SENDER_ID",
-        "appId": "YOUR_FIREBASE_WEB_APP_ID"
+        "apiKey": "AIzaSyDVW3wfmyTAU3gUJkLci02UmwxQbih84H8",
+        "authDomain": "studio-8693145870-65e01.firebaseapp.com",
+        "projectId": "studio-8693145870-65e01",
+        "storageBucket": "studio-8693145870-65e01.firebasestorage.app",
+        "messagingSenderId": "737235986672",
+        "appId": "1:737235986672:web:405a78588fa5a5e072fa35"
       },
       "googleClientIds": {
-        "ios": "",
+        "ios": "737235986672-t5l1dpr0qttem4c6po2f453fvk50n2db.apps.googleusercontent.com",
         "android": "",
-        "web": ""
+        "web": "737235986672-pmei1jmr3o732fl3u98pokolkl3p7rmi.apps.googleusercontent.com"
       }
     }
   }

@@ -40,8 +40,11 @@ screen they can upgrade that guest account to Google or email/password; both
 `src/auth/` (`firebase.ts` bootstrap, `AuthContext.tsx` provider) and
 `src/components/AccountCard.tsx`.
 
-Without a Firebase config the app runs exactly as before, and the Account card
-says sign-in isn't set up. To turn it on:
+This is wired up against the `studio-8693145870-65e01` Firebase project —
+`expo.extra.firebase` in `app.json` has its real Web app config, and
+`firebase.json` has anonymous, email/password, and Google sign-in deployed.
+Without that config the app runs exactly as before, and the Account card says
+sign-in isn't set up; that's the state a fresh Firebase project starts in:
 
 1. Create (or pick) a Firebase project and point the CLI at it:
    `npx -y firebase-tools@latest use --add`.
@@ -59,6 +62,20 @@ Anonymous and email sign-in work in Expo Go. Google Sign-In goes through
 therefore a development or EAS build. If you ship Google Sign-In on iOS, App
 Store guideline 4.8 also requires Sign in with Apple — enable it in the console
 and add an `OAuthProvider('apple.com')` path alongside the Google one.
+
+**`googleClientIds.android` is still empty.** An Android OAuth client needs a
+SHA-1 fingerprint of the signing keystore, and that keystore lives in EAS's
+credential store, not in this checkout. To fill it in:
+
+1. `npx eas credentials` → Android → the build profile you'll ship with → view
+   the keystore → copy its SHA-1.
+2. Add that SHA-1 to the Android app in the
+   [Firebase console](https://console.firebase.google.com/project/studio-8693145870-65e01/settings/general),
+   which creates the matching Android OAuth client automatically.
+3. Copy that client's ID into `expo.extra.googleClientIds.android`.
+
+Until then, Google Sign-In works in iOS and EAS web builds but not in an
+Android development or production build.
 
 ## The flow
 
