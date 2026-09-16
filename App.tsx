@@ -15,6 +15,7 @@ import { JetBrainsMono_400Regular } from '@expo-google-fonts/jetbrains-mono/400R
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Medium';
 
 import { AppStateProvider } from './src/state/AppState';
+import { AuthProvider } from './src/auth/AuthContext';
 import { C } from './src/theme';
 import type { RootStackParamList } from './src/navigation/types';
 
@@ -79,6 +80,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <AuthProvider>
       <AppStateProvider>
         <StatusBar style="light" />
         <NavigationContainer theme={navTheme}>
@@ -124,6 +126,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </AppStateProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

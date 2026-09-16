@@ -51,14 +51,28 @@
         {
           "photosPermission": "LearnOS needs access to your photos so you can import pages and build a learning path from them."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
         "projectId": "08dcdca5-47d5-400c-bc55-6ac5b90e8c48"
       },
       "scanApiUrl": "http://localhost:3000",
-      "scanApiKey": ""
+      "scanApiKey": "",
+      "firebase": {
+        "apiKey": "YOUR_FIREBASE_WEB_API_KEY",
+        "authDomain": "YOUR_PROJECT_ID.firebaseapp.com",
+        "projectId": "YOUR_PROJECT_ID",
+        "storageBucket": "YOUR_PROJECT_ID.firebasestorage.app",
+        "messagingSenderId": "YOUR_SENDER_ID",
+        "appId": "YOUR_FIREBASE_WEB_APP_ID"
+      },
+      "googleClientIds": {
+        "ios": "",
+        "android": "",
+        "web": ""
+      }
     }
   }
 }

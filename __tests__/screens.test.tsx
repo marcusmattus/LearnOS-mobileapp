@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStateProvider } from '../src/state/AppState';
+import { AuthProvider } from '../src/auth/AuthContext';
 import type { RootStackParamList } from '../src/navigation/types';
 import type { ScanAnalysis } from '../src/api/scanApi';
 
@@ -151,13 +152,15 @@ function renderScreen(
   act(() => {
     tree = renderer.create(
       <SafeAreaProvider initialMetrics={METRICS}>
-        <AppStateProvider initial={initial}>
-          <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name={name} component={Component} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </AppStateProvider>
+        <AuthProvider>
+          <AppStateProvider initial={initial}>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name={name} component={Component} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </AppStateProvider>
+        </AuthProvider>
       </SafeAreaProvider>,
     );
   });
@@ -171,6 +174,16 @@ describe('LearnOS screens', () => {
   it.each(SCREENS)('%s renders', (name, Component) => {
     const tree = renderScreen(name, Component);
     expect(tree.toJSON()).toBeTruthy();
+    act(() => {
+      tree.unmount();
+    });
+  });
+
+  it('Profile explains that sign-in is unconfigured without a Firebase config', () => {
+    const tree = renderScreen('Profile', ProfileScreen);
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain('ACCOUNT');
+    expect(json).toContain('Sign-in isn’t set up in this build');
     act(() => {
       tree.unmount();
     });
