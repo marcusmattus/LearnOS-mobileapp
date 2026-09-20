@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenView } from '../components/ScreenView';
 import { FadeInUp } from '../components/anim';
 import { BackButton, PrimaryButton, SecondaryButton, SectionLabel, StatTile, Stripes } from '../components/ui';
+import { useAppState } from '../state/AppState';
 import { BOOK } from '../data/content';
 import { C, F, lh } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
@@ -13,6 +14,23 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function CompleteScreen() {
   const nav = useNavigation<Nav>();
+  const { analysis } = useAppState();
+
+  // Real scan result, if there is one — otherwise the demo book so this
+  // screen still reads well when reached from a simulated source.
+  const book = analysis
+    ? {
+        title: analysis.book.title,
+        subtitle: analysis.book.subtitle ?? '',
+        author: analysis.book.author ?? '',
+        pages: analysis.book.estimatedPages,
+        concepts: analysis.concepts.length,
+        themes: analysis.themes.length,
+        difficulty: analysis.book.difficulty,
+        overview: analysis.overview,
+        themeList: analysis.themes,
+      }
+    : BOOK;
 
   return (
     <ScreenView contentStyle={styles.content}>
@@ -30,29 +48,29 @@ export function CompleteScreen() {
             <Text style={styles.coverLabel}>cover</Text>
           </Stripes>
           <View style={styles.flex}>
-            <Text style={styles.bookTitle}>{BOOK.title}</Text>
-            <Text style={styles.bookSub}>{BOOK.subtitle}</Text>
-            <Text style={styles.bookSub}>{BOOK.author}</Text>
+            <Text style={styles.bookTitle}>{book.title}</Text>
+            {!!book.subtitle && <Text style={styles.bookSub}>{book.subtitle}</Text>}
+            {!!book.author && <Text style={styles.bookSub}>{book.author}</Text>}
             <View style={styles.difficulty}>
-              <Text style={styles.difficultyText}>{BOOK.difficulty}</Text>
+              <Text style={styles.difficultyText}>{book.difficulty}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.stats}>
-          <StatTile value={String(BOOK.pages)} label="Pages" />
-          <StatTile value={String(BOOK.concepts)} label="Key concepts" color={C.purpleLight} />
-          <StatTile value={String(BOOK.themes)} label="Major themes" color={C.teal} />
+          <StatTile value={book.pages != null ? String(book.pages) : '—'} label="Pages" />
+          <StatTile value={String(book.concepts)} label="Key concepts" color={C.purpleLight} />
+          <StatTile value={String(book.themes)} label="Major themes" color={C.teal} />
         </View>
 
         <SectionLabel style={styles.label}>Content overview</SectionLabel>
         <View style={styles.overview}>
-          <Text style={styles.overviewText}>{BOOK.overview}</Text>
+          <Text style={styles.overviewText}>{book.overview}</Text>
         </View>
 
         <SectionLabel style={styles.label}>Major themes</SectionLabel>
         <View style={styles.themes}>
-          {BOOK.themeList.map(t => (
+          {book.themeList.map(t => (
             <View key={t} style={styles.theme}>
               <Text style={styles.themeText}>{t}</Text>
             </View>

@@ -5,6 +5,7 @@ import { ScreenView } from '../components/ScreenView';
 import { FadeInUp } from '../components/anim';
 import { SectionLabel } from '../components/ui';
 import { SignalBars } from '../components/SignalBars';
+import { AccountCard } from '../components/AccountCard';
 import { angle, C, F, lh } from '../theme';
 
 /** The teaching order LearnOS currently believes works best for this learner. */
@@ -56,6 +57,8 @@ export function ProfileScreen() {
         <Text style={styles.footnote}>
           These estimates continuously change based on demonstrated understanding.
         </Text>
+
+        <AccountCard />
       </FadeInUp>
     </ScreenView>
   );

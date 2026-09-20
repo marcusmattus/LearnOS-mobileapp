@@ -9,8 +9,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStateProvider } from '../src/state/AppState';
+import { AuthProvider } from '../src/auth/AuthContext';
 import type { RootStackParamList } from '../src/navigation/types';
+import type { ScanAnalysis } from '../src/api/scanApi';
 
+import { SplashScreen } from '../src/screens/SplashScreen';
+import { WelcomeScreen } from '../src/screens/WelcomeScreen';
+import { PaywallScreen } from '../src/screens/PaywallScreen';
+import { LimitScreen } from '../src/screens/LimitScreen';
 import { HomeScreen } from '../src/screens/HomeScreen';
 import { ScanScreen } from '../src/screens/ScanScreen';
 import { CaptureScreen } from '../src/screens/CaptureScreen';
@@ -32,6 +38,10 @@ import { ProfileScreen } from '../src/screens/ProfileScreen';
 import { LibraryScreen } from '../src/screens/LibraryScreen';
 
 const SCREENS: [keyof RootStackParamList, React.ComponentType<any>][] = [
+  ['Splash', SplashScreen],
+  ['Welcome', WelcomeScreen],
+  ['Paywall', PaywallScreen],
+  ['Limit', LimitScreen],
   ['Home', HomeScreen],
   ['Scan', ScanScreen],
   ['Capture', CaptureScreen],
@@ -53,6 +63,79 @@ const SCREENS: [keyof RootStackParamList, React.ComponentType<any>][] = [
   ['Library', LibraryScreen],
 ];
 
+const mockCheck = (question: string) => ({
+  question,
+  answers: [
+    { key: 'A' as const, text: 'Wrong one', correct: false },
+    { key: 'B' as const, text: 'Right one', correct: true },
+    { key: 'C' as const, text: 'Wrong two', correct: false },
+    { key: 'D' as const, text: 'Wrong three', correct: false },
+  ],
+  correctFeedback: 'Nice work.',
+  incorrectFeedback: 'Not quite — try again.',
+});
+
+/**
+ * A minimal real-shaped scan result: two independent roots that merge into a
+ * third concept, then a fourth on top — enough to exercise the map's
+ * prerequisite-depth layout (branch + merge), not just a straight chain.
+ */
+const MOCK_ANALYSIS: ScanAnalysis = {
+  book: {
+    title: 'Test Book',
+    author: 'A. Author',
+    subtitle: 'A Subtitle',
+    estimatedPages: 200,
+    difficulty: 'Moderate difficulty',
+  },
+  overview: 'A test overview.',
+  themes: ['Theme One', 'Theme Two'],
+  concepts: [
+    {
+      name: 'Concept A',
+      tag: 'CORE',
+      minutes: 10,
+      summary: 'Summary A',
+      explanation: 'Explanation A',
+      keyTerms: ['Term A1', 'Term A2'],
+      prerequisites: [],
+      check: mockCheck('Question A?'),
+    },
+    {
+      name: 'Concept B',
+      tag: 'FOUNDATION',
+      minutes: 12,
+      summary: 'Summary B',
+      explanation: 'Explanation B',
+      keyTerms: ['Term B1'],
+      prerequisites: [],
+      check: mockCheck('Question B?'),
+    },
+    {
+      name: 'Concept C',
+      tag: 'INTERMEDIATE',
+      minutes: 15,
+      summary: 'Summary C',
+      explanation: 'Explanation C',
+      keyTerms: ['Term C1'],
+      prerequisites: ['Concept A', 'Concept B'],
+      check: mockCheck('Question C?'),
+    },
+    {
+      name: 'Concept D',
+      tag: 'ADVANCED',
+      minutes: 20,
+      summary: 'Summary D',
+      explanation: 'Explanation D',
+      keyTerms: ['Term D1'],
+      prerequisites: ['Concept C'],
+      check: mockCheck('Question D?'),
+    },
+  ],
+  recommendedApproach: 'written',
+  recommendationNote: 'A note.',
+};
+
 const METRICS = {
   frame: { x: 0, y: 0, width: 393, height: 852 },
   insets: { top: 59, left: 0, right: 0, bottom: 34 },
@@ -69,13 +152,15 @@ function renderScreen(
   act(() => {
     tree = renderer.create(
       <SafeAreaProvider initialMetrics={METRICS}>
-        <AppStateProvider initial={initial}>
-          <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name={name} component={Component} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </AppStateProvider>
+        <AuthProvider>
+          <AppStateProvider initial={initial}>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name={name} component={Component} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </AppStateProvider>
+        </AuthProvider>
       </SafeAreaProvider>,
     );
   });
@@ -89,6 +174,16 @@ describe('LearnOS screens', () => {
   it.each(SCREENS)('%s renders', (name, Component) => {
     const tree = renderScreen(name, Component);
     expect(tree.toJSON()).toBeTruthy();
+    act(() => {
+      tree.unmount();
+    });
+  });
+
+  it('Profile explains that sign-in is unconfigured without a Firebase config', () => {
+    const tree = renderScreen('Profile', ProfileScreen);
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain('ACCOUNT');
+    expect(json).toContain('Sign-in isn’t set up in this build');
     act(() => {
       tree.unmount();
     });
@@ -139,6 +234,64 @@ describe('LearnOS screens', () => {
     expect(json).toContain('THE CHAIN');
     act(() => {
       tree.unmount();
+    });
+  });
+
+  describe('live scan data', () => {
+    it('Map lays out a real scanned path with a branch and a merge', () => {
+      const tree = renderScreen('Map', MapScreen, { analysis: MOCK_ANALYSIS, activeConceptIndex: 1 });
+      const json = JSON.stringify(tree.toJSON());
+      expect(json).toContain('Test Book');
+      expect(json).toContain('Concept A');
+      expect(json).toContain('Concept D');
+      act(() => {
+        tree.unmount();
+      });
+    });
+
+    it('Lesson shows the live concept’s written explanation and key terms', () => {
+      const tree = renderScreen('Lesson', LessonScreen, { analysis: MOCK_ANALYSIS, activeConceptIndex: 2 });
+      const json = JSON.stringify(tree.toJSON());
+      expect(json).toContain('Concept C');
+      expect(json).toContain('Explanation C');
+      expect(json).toContain('Term C1');
+      act(() => {
+        tree.unmount();
+      });
+    });
+
+    it('Practice shows the live comprehension check', () => {
+      const tree = renderScreen('Practice', PracticeScreen, {
+        analysis: MOCK_ANALYSIS,
+        activeConceptIndex: 0,
+        pick: 'B',
+      });
+      const json = JSON.stringify(tree.toJSON());
+      expect(json).toContain('Question A?');
+      expect(json).toContain('Nice work.');
+      act(() => {
+        tree.unmount();
+      });
+    });
+
+    it('Mastery names the concept just finished and what unlocks next', () => {
+      const tree = renderScreen('Mastery', MasteryScreen, { analysis: MOCK_ANALYSIS, activeConceptIndex: 0 });
+      const json = JSON.stringify(tree.toJSON());
+      expect(json).toContain('Concept A');
+      expect(json).toContain('Concept B unlocked');
+      act(() => {
+        tree.unmount();
+      });
+    });
+
+    it('Home shows the live scanned book and its real progress', () => {
+      const tree = renderScreen('Home', HomeScreen, { analysis: MOCK_ANALYSIS, activeConceptIndex: 1 });
+      const json = JSON.stringify(tree.toJSON());
+      expect(json).toContain('Test Book');
+      expect(json).toContain('1 of 4 concepts mastered');
+      act(() => {
+        tree.unmount();
+      });
     });
   });
 });

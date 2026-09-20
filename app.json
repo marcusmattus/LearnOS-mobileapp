@@ -8,7 +8,10 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.learnos.app"
+      "bundleIdentifier": "com.learnos.learnosmobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,9 +21,58 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "ai.learnos.app"
+      "package": "com.learnos.learnosmobile"
     },
     "scheme": "learnos",
-    "backgroundColor": "#0B0B12"
+    "backgroundColor": "#0B0B12",
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0B12",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0B0B12"
+          }
+        }
+      ],
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "LearnOS uses your camera to scan books, pages and notes so it can build a learning path from them."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LearnOS needs access to your photos so you can import pages and build a learning path from them."
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "08dcdca5-47d5-400c-bc55-6ac5b90e8c48"
+      },
+      "scanApiUrl": "http://localhost:3000",
+      "scanApiKey": "",
+      "firebase": {
+        "apiKey": "AIzaSyDVW3wfmyTAU3gUJkLci02UmwxQbih84H8",
+        "authDomain": "studio-8693145870-65e01.firebaseapp.com",
+        "projectId": "studio-8693145870-65e01",
+        "storageBucket": "studio-8693145870-65e01.firebasestorage.app",
+        "messagingSenderId": "737235986672",
+        "appId": "1:737235986672:web:405a78588fa5a5e072fa35"
+      },
+      "googleClientIds": {
+        "ios": "737235986672-t5l1dpr0qttem4c6po2f453fvk50n2db.apps.googleusercontent.com",
+        "android": "",
+        "web": "737235986672-pmei1jmr3o732fl3u98pokolkl3p7rmi.apps.googleusercontent.com"
+      }
+    }
   }
 }

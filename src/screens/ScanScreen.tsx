@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenView } from '../components/ScreenView';
 import { FadeInUp, GlowRing, ScanLine } from '../components/anim';
 import { Chip, Stripes } from '../components/ui';
 import { BoltIcon, ImageIcon } from '../components/icons';
+import { useAppState, FREE_SCAN_LIMIT } from '../state/AppState';
 import { angle, C, F } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -15,10 +17,10 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 const KINDS = ['BOOK', 'PAGE', 'DIAGRAM', 'NOTES', 'DOC'];
 
 const SOURCES = [
-  { title: 'Upload PDF', meta: 'up to 800 pages' },
-  { title: 'Paste Text', meta: 'notes, articles' },
-  { title: 'Import Photos', meta: 'from library' },
-  { title: 'Enter Topic', meta: 'no material yet' },
+  { title: 'Upload PDF', meta: 'up to 800 pages', kind: 'simulated' as const },
+  { title: 'Paste Text', meta: 'notes, articles', kind: 'simulated' as const },
+  { title: 'Import Photos', meta: 'from library', kind: 'photos' as const },
+  { title: 'Enter Topic', meta: 'no material yet', kind: 'simulated' as const },
 ];
 
 const VIEWFINDER_HEIGHT = 250;
@@ -26,6 +28,48 @@ const VIEWFINDER_HEIGHT = 250;
 export function ScanScreen() {
   const nav = useNavigation<Nav>();
   const [kind, setKind] = useState('BOOK');
+  const { scansUsed, capturePage, useFreeScan } = useAppState();
+  const [picking, setPicking] = useState(false);
+
+  const gated = (go: () => void) => {
+    if (scansUsed >= FREE_SCAN_LIMIT) nav.navigate('Limit');
+    else go();
+  };
+
+  const openCapture = () => gated(() => nav.navigate('Capture'));
+
+  const runSource = (source: (typeof SOURCES)[number]) =>
+    gated(async () => {
+      if (source.kind === 'simulated') {
+        useFreeScan();
+        nav.navigate('Analysing');
+        return;
+      }
+      // Import Photos — pull real images from the library into this scan session.
+      if (picking) return;
+      setPicking(true);
+      try {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Photo access needed', 'Enable photo library access for LearnOS in Settings.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsMultipleSelection: true,
+          quality: 0.5,
+          base64: true,
+        });
+        if (result.canceled || result.assets.length === 0) return;
+        result.assets.forEach(a => {
+          if (a.base64) capturePage({ uri: a.uri, base64: a.base64 });
+        });
+        useFreeScan();
+        nav.navigate('Analysing');
+      } finally {
+        setPicking(false);
+      }
+    });
 
   return (
     <ScreenView nav>
@@ -45,8 +89,8 @@ export function ScanScreen() {
           ))}
         </ScrollView>
 
-        {/* Viewfinder — camera feed is a marked placeholder */}
-        <Pressable onPress={() => nav.navigate('Capture')}>
+        {/* Viewfinder — taps open the real camera */}
+        <Pressable onPress={openCapture}>
           <LinearGradient colors={['#1A1622', '#0F0F18']} {...angle(160)} style={styles.viewfinder}>
             <Stripes variant="texture" style={StyleSheet.absoluteFill} />
             <Stripes variant="pageStack" style={styles.page} />
@@ -70,7 +114,7 @@ export function ScanScreen() {
             <BoltIcon size={18} color={C.muted} />
           </View>
 
-          <Pressable style={styles.shutterRing} onPress={() => nav.navigate('Capture')}>
+          <Pressable style={styles.shutterRing} onPress={openCapture}>
             <View style={styles.shutterInnerWrap}>
               <GlowRing duration={2600} color={C.purple} radius={999} blur={30} spread={4} />
               <LinearGradient
@@ -89,11 +133,7 @@ export function ScanScreen() {
         {/* Other sources */}
         <View style={styles.sourceGrid}>
           {SOURCES.map(s => (
-            <Pressable
-              key={s.title}
-              style={styles.source}
-              onPress={() => nav.navigate('Analysing')}
-            >
+            <Pressable key={s.title} style={styles.source} onPress={() => runSource(s)}>
               <Text style={styles.sourceTitle}>{s.title}</Text>
               <Text style={styles.sourceMeta}>{s.meta}</Text>
             </Pressable>

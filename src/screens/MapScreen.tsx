@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -28,7 +28,9 @@ import {
 import { PrimaryButton, RadialGlow } from '../components/ui';
 import { SearchIcon } from '../components/icons';
 import { useAppState } from '../state/AppState';
-import { BOOK, CONCEPT_DETAILS } from '../data/content';
+import { BOOK, CONCEPT_DETAILS, type ConceptDetail } from '../data/content';
+import { ROOT_Y, computeMapLayout, roadPath, type MapLayout } from '../utils/mapLayout';
+import type { AnalysisConcept } from '../api/scanApi';
 import { C, F } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -55,12 +57,45 @@ const CANVAS_H = 900;
 export function MapScreen() {
   const nav = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { adapted, sheetOpen, openSheet, closeSheet } = useAppState();
+  const { adapted, sheetOpen, openSheet, closeSheet, analysis, activeConceptIndex } = useAppState();
 
   const dash = useDashOffset(1400, 24);
 
   const [focused, setFocused] = useState<string | null>(null);
+
+  const live = !!analysis && analysis.concepts.length > 0;
+  const layout = useMemo(
+    () => (live ? computeMapLayout(analysis!.concepts) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [live, analysis],
+  );
+  const pathDone = live && activeConceptIndex >= analysis!.concepts.length;
+  const currentLiveConcept = live
+    ? analysis!.concepts[Math.min(activeConceptIndex, analysis!.concepts.length - 1)]
+    : null;
+
+  const liveDetail: ConceptDetail | null = useMemo(() => {
+    if (!live || !analysis) return null;
+    const idx = analysis.concepts.findIndex(c => c.name === focused);
+    const i = idx >= 0 ? idx : Math.min(activeConceptIndex, analysis.concepts.length - 1);
+    const c = analysis.concepts[i];
+    if (!c) return null;
+    const mastered = i < activeConceptIndex;
+    return {
+      name: c.name,
+      importance: c.tag,
+      importanceTone: c.tag === 'CORE' ? 'high' : 'normal',
+      minutes: `${c.minutes} min`,
+      mastery: mastered ? 1 : 0,
+      prerequisites: c.prerequisites,
+      understand: c.summary,
+      needsWork: mastered ? 'Nothing outstanding — revisit any time.' : 'Not started yet.',
+      recommendation: c.explanation,
+    };
+  }, [live, analysis, focused, activeConceptIndex]);
+
   const detail =
+    liveDetail ??
     CONCEPT_DETAILS[focused ?? (adapted ? 'Societies' : 'Agricultural Revolution')] ??
     CONCEPT_DETAILS['Agricultural Revolution'];
 
@@ -80,7 +115,9 @@ export function MapScreen() {
           <View style={styles.flex}>
             <Text style={styles.title}>Your Learning Map</Text>
             <Text style={styles.subtitle}>
-              {BOOK.title} · {BOOK.concepts} concepts · {adapted ? 7 : 6} mastered
+              {live
+                ? `${analysis!.book.title} · ${analysis!.concepts.length} concepts · ${activeConceptIndex} mastered`
+                : `${BOOK.title} · ${BOOK.concepts} concepts · ${adapted ? 7 : 6} mastered`}
             </Text>
           </View>
           <View style={styles.headerBtn}>
@@ -98,60 +135,100 @@ export function MapScreen() {
             contentContainerStyle={styles.scroll}
           >
             <FadeInUp duration={400}>
-              <View style={styles.canvas}>
+              <View style={[styles.canvas, live && { height: layout!.canvasHeight }]}>
                 <RadialGlow
                   color={C.purple}
                   opacity={adapted ? 0.14 : 0.12}
                   style={[
                     styles.canvasGlow,
-                    { top: CANVAS_H * (adapted ? 0.4 : 0.46) - 130 },
+                    { top: (live ? layout!.canvasHeight : CANVAS_H) * (adapted ? 0.4 : 0.46) - 130 },
                   ]}
                 />
 
-                <Svg width={CANVAS_W} height={CANVAS_H} style={StyleSheet.absoluteFill}>
-                  {adapted ? <AdaptedRoads dash={dash} /> : <InitialRoads dash={dash} />}
+                <Svg
+                  width={CANVAS_W}
+                  height={live ? layout!.canvasHeight : CANVAS_H}
+                  style={StyleSheet.absoluteFill}
+                >
+                  {live ? (
+                    <LiveRoads layout={layout!} />
+                  ) : adapted ? (
+                    <AdaptedRoads dash={dash} />
+                  ) : (
+                    <InitialRoads dash={dash} />
+                  )}
                 </Svg>
 
-                {adapted ? <AdaptedNodes onOpen={show} /> : <InitialNodes onOpen={show} />}
+                {live ? (
+                  <LiveNodes
+                    concepts={analysis!.concepts}
+                    layout={layout!}
+                    activeIndex={activeConceptIndex}
+                    bookTitle={analysis!.book.title}
+                    onOpen={show}
+                  />
+                ) : adapted ? (
+                  <AdaptedNodes onOpen={show} />
+                ) : (
+                  <InitialNodes onOpen={show} />
+                )}
               </View>
             </FadeInUp>
           </ScrollView>
 
           {/* Next up — floats over the map */}
-          <View style={styles.nextUp}>
-            <View style={styles.nextUpHead}>
-              <Text style={styles.nextUpEyebrow}>NEXT UP</Text>
-              <View style={styles.nextUpRule} />
-              <Text style={styles.nextUpTime}>18 min</Text>
-            </View>
-            <View style={styles.nextUpBody}>
-              <View style={styles.flex}>
-                <Text style={styles.nextUpTitle}>
-                  {adapted ? 'Food Surplus' : 'Agricultural Revolution'}
+          {!pathDone && (
+            <View style={styles.nextUp}>
+              <View style={styles.nextUpHead}>
+                <Text style={styles.nextUpEyebrow}>NEXT UP</Text>
+                <View style={styles.nextUpRule} />
+                <Text style={styles.nextUpTime}>
+                  {live ? `${currentLiveConcept!.minutes} min` : '18 min'}
                 </Text>
-                <View style={styles.approachRow}>
-                  <View style={[styles.approach, { backgroundColor: C.purpleA14 }]}>
-                    <Text style={[styles.approachText, { color: C.purpleSoft }]}>Visual</Text>
-                  </View>
-                  <Text style={styles.arrow}>→</Text>
-                  <View style={[styles.approach, { backgroundColor: C.blueA14 }]}>
-                    <Text style={[styles.approachText, { color: C.blueLight }]}>Example</Text>
-                  </View>
-                  <Text style={styles.arrow}>→</Text>
-                  <View style={[styles.approach, { backgroundColor: C.tealA14 }]}>
-                    <Text style={[styles.approachText, { color: C.tealLight }]}>Practice</Text>
+              </View>
+              <View style={styles.nextUpBody}>
+                <View style={styles.flex}>
+                  <Text style={styles.nextUpTitle}>
+                    {live
+                      ? currentLiveConcept!.name
+                      : adapted
+                        ? 'Food Surplus'
+                        : 'Agricultural Revolution'}
+                  </Text>
+                  <View style={styles.approachRow}>
+                    <View style={[styles.approach, { backgroundColor: C.purpleA14 }]}>
+                      <Text style={[styles.approachText, { color: C.purpleSoft }]}>
+                        {live ? currentLiveConcept!.tag : 'Visual'}
+                      </Text>
+                    </View>
+                    <Text style={styles.arrow}>→</Text>
+                    <View style={[styles.approach, { backgroundColor: C.blueA14 }]}>
+                      <Text style={[styles.approachText, { color: C.blueLight }]}>
+                        {live ? 'Explain' : 'Example'}
+                      </Text>
+                    </View>
+                    <Text style={styles.arrow}>→</Text>
+                    <View style={[styles.approach, { backgroundColor: C.tealA14 }]}>
+                      <Text style={[styles.approachText, { color: C.tealLight }]}>Practice</Text>
+                    </View>
                   </View>
                 </View>
+                <PrimaryButton
+                  label="Start"
+                  onPress={() => nav.navigate('Lesson')}
+                  contentStyle={styles.startBtn}
+                  textStyle={styles.startBtnText}
+                  glow={false}
+                />
               </View>
-              <PrimaryButton
-                label="Start"
-                onPress={() => nav.navigate('Lesson')}
-                contentStyle={styles.startBtn}
-                textStyle={styles.startBtnText}
-                glow={false}
-              />
             </View>
-          </View>
+          )}
+
+          {pathDone && (
+            <View style={styles.nextUp}>
+              <Text style={styles.nextUpTitle}>Path complete — every concept mastered.</Text>
+            </View>
+          )}
 
           {sheetOpen && (
             <ConceptSheet
@@ -168,6 +245,76 @@ export function MapScreen() {
 
       <BottomNav />
     </View>
+  );
+}
+
+/* ── Live roads / nodes ───────────────────────────────────────────────── */
+
+function LiveRoads({ layout }: { layout: MapLayout }) {
+  const root = { x: CANVAS_W / 2, y: ROOT_Y };
+  return (
+    <>
+      {layout.rootTargets.map((t, i) => (
+        <Path key={`root-${i}`} d={roadPath(root, t)} stroke={C.green} strokeWidth={2} fill="none" opacity={0.5} />
+      ))}
+      {layout.edges.map((e, i) => (
+        <Path
+          key={i}
+          d={roadPath(e.from, e.to)}
+          stroke={C.muted}
+          strokeWidth={1.6}
+          fill="none"
+          strokeDasharray="4 5"
+          opacity={0.5}
+        />
+      ))}
+      {layout.destSources.map((s, i) => (
+        <Path
+          key={`dest-${i}`}
+          d={roadPath(s, layout.destPos)}
+          stroke={C.teal}
+          strokeWidth={1.6}
+          fill="none"
+          strokeDasharray="4 5"
+          opacity={0.4}
+        />
+      ))}
+    </>
+  );
+}
+
+function LiveNodes({
+  concepts,
+  layout,
+  activeIndex,
+  bookTitle,
+  onOpen,
+}: {
+  concepts: AnalysisConcept[];
+  layout: MapLayout;
+  activeIndex: number;
+  bookTitle: string;
+  onOpen: (name: string) => void;
+}) {
+  return (
+    <>
+      <NodeAt x={CANVAS_W / 2} y={ROOT_Y}>
+        <RootNode label={bookTitle} />
+      </NodeAt>
+      {concepts.map((c, i) => {
+        const pos = layout.positions[i];
+        return (
+          <NodeAt key={c.name} x={pos.x} y={pos.y}>
+            {i < activeIndex && <MasteredNode label={c.name} onPress={() => onOpen(c.name)} />}
+            {i === activeIndex && <CurrentNode label={c.name} glyph="◎" onPress={() => onOpen(c.name)} />}
+            {i > activeIndex && <LockedNode label={c.name} />}
+          </NodeAt>
+        );
+      })}
+      <NodeAt x={layout.destPos.x} y={layout.destPos.y}>
+        <DestinationNode label={activeIndex >= concepts.length ? 'PATH COMPLETE' : 'END OF PATH'} />
+      </NodeAt>
+    </>
   );
 }
 

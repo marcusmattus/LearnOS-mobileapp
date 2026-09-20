@@ -17,7 +17,7 @@ const TABS = ['Concepts', 'Structure', 'Connections', 'Insights'];
 
 export function ConceptsScreen() {
   const nav = useNavigation<Nav>();
-  const { openSheet } = useAppState();
+  const { openSheet, analysis } = useAppState();
   const [tab, setTab] = useState('Concepts');
 
   const openConcept = () => {
@@ -25,14 +25,27 @@ export function ConceptsScreen() {
     nav.navigate('Map');
   };
 
+  const bookTitle = analysis?.book.title ?? BOOK.title;
+  // Real concepts haven't been studied yet, so none start "mastered"; the
+  // meta line swaps the demo's canned mastery string for minutes + summary.
+  const rows = analysis
+    ? analysis.concepts.map((c, i) => ({
+        num: String(i + 1).padStart(2, '0'),
+        name: c.name,
+        tag: c.tag,
+        meta: `${c.minutes} min · ${c.summary}`,
+        mastered: false,
+      }))
+    : CONCEPTS;
+
   return (
     <ScreenView contentStyle={styles.content}>
       <FadeInUp>
         <View style={styles.header}>
           <BackButton onPress={() => nav.goBack()} />
           <View>
-            <Text style={styles.title}>{BOOK.concepts} Concepts Found</Text>
-            <Text style={styles.subtitle}>{BOOK.title} · sorted by prerequisite order</Text>
+            <Text style={styles.title}>{rows.length} Concepts Found</Text>
+            <Text style={styles.subtitle}>{bookTitle} · sorted by prerequisite order</Text>
           </View>
         </View>
 
@@ -48,7 +61,7 @@ export function ConceptsScreen() {
         </View>
 
         <View style={styles.list}>
-          {CONCEPTS.map(c => {
+          {rows.map(c => {
             const tagColor = TAG_COLORS[c.tag];
             return (
               <Pressable key={c.num} style={styles.row} onPress={openConcept}>
@@ -64,7 +77,9 @@ export function ConceptsScreen() {
                 </View>
                 <View style={styles.flex}>
                   <Text style={styles.name}>{c.name}</Text>
-                  <Text style={styles.meta}>{c.meta}</Text>
+                  <Text style={styles.meta} numberOfLines={1}>
+                    {c.meta}
+                  </Text>
                 </View>
                 <View style={[styles.tag, { backgroundColor: tagColor.bg }]}>
                   <Text style={[styles.tagText, { color: tagColor.fg }]}>{c.tag}</Text>

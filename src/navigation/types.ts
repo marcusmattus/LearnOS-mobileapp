@@ -1,5 +1,9 @@
 /** Every screen in the LearnOS flow, in the order the prototype walks them. */
 export type RootStackParamList = {
+  Splash: undefined;
+  Welcome: undefined;
+  Paywall: undefined;
+  Limit: undefined;
   Home: undefined;
   Scan: undefined;
   Capture: undefined;

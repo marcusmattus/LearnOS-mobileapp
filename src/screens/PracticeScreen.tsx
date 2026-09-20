@@ -14,11 +14,30 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function PracticeScreen() {
   const nav = useNavigation<Nav>();
-  const { pick, setPick } = useAppState();
+  const { pick, setPick, analysis, activeConceptIndex } = useAppState();
+
+  const live = !!analysis && analysis.concepts.length > 0 && activeConceptIndex < analysis.concepts.length;
+  const check = live ? analysis!.concepts[activeConceptIndex].check : null;
+  // Trust the model said exactly one answer is correct; fall back to the
+  // first option if it somehow didn't, rather than crashing the screen.
+  const correctKey = check ? (check.answers.find(a => a.correct)?.key ?? check.answers[0]?.key) : 'B';
+
+  const question = check?.question ?? QUESTION;
+  const answers = check?.answers ?? ANSWERS;
 
   const revealed = pick !== null;
-  const correct = pick === 'B';
-  const feedback = correct ? FEEDBACK.correct : FEEDBACK.wrong;
+  const correct = pick === correctKey;
+  const feedback = live
+    ? {
+        title: correct ? 'Exactly right.' : 'Not quite.',
+        body: correct ? check!.correctFeedback : check!.incorrectFeedback,
+        bg: correct ? 'rgba(71,215,158,0.09)' : 'rgba(255,200,87,0.08)',
+        border: correct ? C.greenA35 : 'rgba(255,200,87,0.32)',
+        fg: correct ? C.greenLight : C.amberLight,
+      }
+    : correct
+      ? FEEDBACK.correct
+      : FEEDBACK.wrong;
 
   return (
     <ScreenView contentStyle={styles.content}>
@@ -27,14 +46,14 @@ export function PracticeScreen() {
           <BackButton onPress={() => nav.navigate('Lesson')} />
           <View style={styles.flex}>
             <Text style={styles.title}>Check Your Understanding</Text>
-            <Text style={styles.subtitle}>Question 2 of 5</Text>
+            <Text style={styles.subtitle}>{live ? 'Comprehension check' : 'Question 2 of 5'}</Text>
           </View>
         </View>
 
-        <Text style={styles.question}>{QUESTION}</Text>
+        <Text style={styles.question}>{question}</Text>
 
         <View style={styles.answers}>
-          {ANSWERS.map(a => {
+          {answers.map(a => {
             const picked = pick === a.key;
             // The right answer is always revealed; a wrong pick is flagged too.
             const isCorrect = revealed && a.correct;

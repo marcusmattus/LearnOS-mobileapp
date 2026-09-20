@@ -218,6 +218,18 @@ export const FEEDBACK = {
 
 export const SCAN_STATUSES = ['Page detected', 'Hold steady…', 'Captured'];
 
+/* ── Paywall ──────────────────────────────────────────────────────────── */
+
+export type PlanRow = { label: string; free: string; pro: string };
+
+export const PLAN_ROWS: PlanRow[] = [
+  { label: 'Scans', free: '5', pro: 'Unlimited' },
+  { label: 'Learning maps', free: '1', pro: 'Unlimited' },
+  { label: 'Teach me another way', free: '—', pro: 'All modes' },
+  { label: 'Live path adaptation', free: '—', pro: 'Included' },
+  { label: 'Progress history', free: '7 days', pro: 'Full' },
+];
+
 /* ── Book being analysed ──────────────────────────────────────────────── */
 
 export const BOOK = {
